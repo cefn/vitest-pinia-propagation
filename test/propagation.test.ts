@@ -2,55 +2,13 @@ import { createPinia, defineStore, Pinia, Store, storeToRefs } from "pinia";
 import { describe, test, expect } from "vitest";
 import { computed, reactive, watch } from "vue";
 
-/**
- * Unhappy paths: various non-functioning attempts to make a simplifed reactive
- * data structure that tracks a more complex Pinia store state.
- */
-
-/** Store state to track, and map into a different form.  */
-type Poem = {
-  title: string;
-  verses: string[];
-};
-
-/** Mapped version of store state */
-type MappedPoem = {
-  summary: string | null;
-};
-
-/** Cache of remote state (like react-query). */
-export type DataLoader<Ok, Error = unknown> =
-  // loading true or false, but has nothing yet
-  | ({ loading: boolean } & {
-      data?: never;
-      errors?: never;
-    })
-  // retrieval failed - loading===false, has errors
-  | {
-      loading: false;
-      data?: never;
-      errors: Error[];
-    }
-  // retrieval succeeded - loading===false, has data
-  | {
-      loading: false;
-      data: Ok;
-      errors?: never;
-    };
-
-function createSummary(poem: Poem) {
-  const { title, verses } = poem;
-  const firstVerse = verses?.[0] || "{missing}";
-  return `Title: ${title} First verse: ${firstVerse}`;
-}
-
-function createDataLoader<T>(): DataLoader<T> {
-  return { loading: false, data: undefined, errors: undefined };
-}
-
-const usePoemStore = defineStore("poem", {
-  state: () => createDataLoader<Poem>(),
-});
+import {
+  Poem,
+  DataLoader,
+  usePoemStore,
+  createSummary,
+  MappedPoem,
+} from "../index";
 
 const examplePoem: Poem = {
   title: "Roud Folk Song Index number 19798",
@@ -62,25 +20,36 @@ const examplePoem: Poem = {
   ],
 };
 
-function populateLoader(poemStore: Store<any, DataLoader<Poem>>, poem: Poem) {
-  // pretend to start loading
+/**
+ * Unhappy paths: various non-functioning attempts to make a simplifed reactive
+ * data structure that tracks a more complex Pinia store state.
+ */
+
+function emulateLoading(poemStore: Store<any, DataLoader<Poem>>, poem: Poem) {
+  // pretend to start loading - no data yet
   poemStore.$patch({
     loading: true,
+    data: null,
+    errors: null,
   });
-  // pretend to finish loading
+  // pretend to finish loading - data has arrived
   poemStore.$patch({
     loading: false,
     data: poem,
+    errors: null,
   });
   // check that state has changed
   expect(poemStore.$state).toMatchObject({
     loading: false,
     data: poem,
+    errors: null,
   });
 }
 
+/** Example store with setup() wiring up a ComputedRef<string> */
 const useComputedStore = defineStore("store-without-refs", () => {
   const poemStore = usePoemStore();
+
   const summary = computed(() => {
     const { data } = poemStore;
     if (data) {
@@ -88,13 +57,18 @@ const useComputedStore = defineStore("store-without-refs", () => {
     }
     return null;
   });
+
   return {
     summary,
   };
 });
 
+/** Example store with setup() first mapping from store to refs,
+ * then using the ref to create a ComputedRef<string>
+ */
 const useStoreToRefs = defineStore("store-with-refs", () => {
   const poemStore = usePoemStore();
+
   const { data } = storeToRefs(poemStore);
   const summary = computed(() => {
     if (data?.value) {
@@ -104,16 +78,22 @@ const useStoreToRefs = defineStore("store-with-refs", () => {
     }
     return null;
   });
+
   return {
     summary,
   };
 });
 
+/** Example vue reactive object, with a watch of a pinia store
+ * triggering explicit writes to it.
+ */
 function createReactiveWithWatch(pinia: Pinia) {
   const poemStore = usePoemStore(pinia);
+
   const mappedPoem = reactive<MappedPoem>({
     summary: null,
   });
+
   watch(
     () => poemStore.loading,
     () => {
@@ -124,14 +104,20 @@ function createReactiveWithWatch(pinia: Pinia) {
       mappedPoem.summary = null;
     }
   );
+
   return mappedPoem;
 }
 
+/** Create a reactive object, and $subscribe to pinia state changes
+ * that trigger explicit writes.
+ */
 function createReactiveWithSubscribe(pinia: Pinia) {
   const poemStore = usePoemStore(pinia);
+
   const mappedPoem = reactive<MappedPoem>({
     summary: null,
   });
+
   poemStore.$subscribe(() => {
     const { data } = poemStore;
     if (data) {
@@ -139,23 +125,16 @@ function createReactiveWithSubscribe(pinia: Pinia) {
     }
     mappedPoem.summary = null;
   });
+
   return mappedPoem;
 }
 
-describe("Mapping the state", () => {
-  test("createSummary()", () => {
-    expect(createSummary(examplePoem)).toBe(
-      "Title: Roud Folk Song Index number 19798 First verse: Roses are red"
-    );
-  });
-});
-
-describe("Reactivity pattern - unhappy paths", () => {
+describe("Unhappy paths recording failed propagation - tests shouldn't pass, but they do!", () => {
   test("Computed Store", async () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const summaryStore = useComputedStore(pinia);
-    populateLoader(poemStore, examplePoem);
+    emulateLoading(poemStore, examplePoem);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(summaryStore.$state).toMatchInlineSnapshot("{}");
   });
@@ -164,7 +143,7 @@ describe("Reactivity pattern - unhappy paths", () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const summaryStore = useStoreToRefs(pinia);
-    populateLoader(poemStore, examplePoem);
+    emulateLoading(poemStore, examplePoem);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(summaryStore.$state).toMatchInlineSnapshot("{}");
   });
@@ -173,7 +152,7 @@ describe("Reactivity pattern - unhappy paths", () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const mapped = createReactiveWithWatch(pinia);
-    populateLoader(poemStore, examplePoem);
+    emulateLoading(poemStore, examplePoem);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(mapped).toMatchInlineSnapshot(`
       {
@@ -186,12 +165,20 @@ describe("Reactivity pattern - unhappy paths", () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const mapped = createReactiveWithSubscribe(pinia);
-    populateLoader(poemStore, examplePoem);
+    emulateLoading(poemStore, examplePoem);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(mapped).toMatchInlineSnapshot(`
       {
         "summary": null,
       }
     `);
+  });
+});
+
+describe("Mapping the state", () => {
+  test("createSummary()", () => {
+    expect(createSummary(examplePoem)).toBe(
+      "Title: Roud Folk Song Index number 19798 First verse: Roses are red"
+    );
   });
 });

@@ -1,0 +1,27 @@
+{
+  "name": "vitest-pinia-propagation",
+  "version": "1.0.0",
+  "description": "Sketches of Pinia Propagation Patterns",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cefn/vitest-pinia-propagation.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cefn/vitest-pinia-propagation/issues"
+  },
+  "homepage": "https://github.com/cefn/vitest-pinia-propagation#readme",
+  "dependencies": {
+    "pinia": "^2.0.21",
+    "vitest": "^0.22.1",
+    "vue": "^3.2.38"
+  },
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
+}

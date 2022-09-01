@@ -39,8 +39,12 @@ export const usePoemStore = defineStore("poem", {
   state: () => initDataLoader<Poem>(),
 });
 
-export function createSummary(poem: Poem) {
-  const { title, verses } = poem;
-  const firstVerse = verses?.[0] || "{missing}";
-  return `Title: ${title} First verse: ${firstVerse}`;
+export function summarisePoemLoader(poemLoader: DataLoader<Poem>) {
+  const { data } = poemLoader;
+  if (data) {
+    const { title, verses } = data;
+    const firstVerse = verses?.[0] || "{missing}";
+    return `Title: ${title} First verse: ${firstVerse}`;
+  }
+  return null;
 }

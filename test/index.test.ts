@@ -53,6 +53,7 @@ describe("Compose reactive state backed by a store in various ways", () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const summaryStore = useComputedStore(pinia);
+    expect(summaryStore).toMatchObject({ summary: null });
     emulateLoading(poemStore, FIXTURE_POEM);
     expect(summaryStore).toMatchObject({
       summary:
@@ -64,6 +65,7 @@ describe("Compose reactive state backed by a store in various ways", () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const mapped = createReactiveWithWatch(pinia);
+    expect(mapped).toMatchObject({ summary: null });
     emulateLoading(poemStore, FIXTURE_POEM);
     await Promise.resolve();
     expect(mapped).toMatchObject({
@@ -76,6 +78,7 @@ describe("Compose reactive state backed by a store in various ways", () => {
     const pinia = createPinia();
     const poemStore = usePoemStore(pinia);
     const mapped = createReactiveWithSubscribe(pinia);
+    expect(mapped).toMatchObject({ summary: null });
     emulateLoading(poemStore, FIXTURE_POEM);
     await Promise.resolve();
     expect(mapped).toMatchObject({
